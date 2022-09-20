@@ -6,7 +6,7 @@ require 'uri'
 require 'open3'
 
 def send_email(to, from, subject, body, smtp_host, smtp_port, smtp_security, smtp_username, smtp_password, smtp_auth_mechanism)
-  stdout, rc = Open3.capture2("mailx -S smtp=smtp://#{smtp_host}:#{smtp_port} -S from=#{from} -S smtp-auth=#{smtp_auth_mechanism} -S smtp-auth-user=#{smtp_username} -S smtp-auth-password=#{smtp_password} -s \"#{subject}\" #{to}", :stdin_data=>body)
+  stdout, rc = Open3.capture2('/usr/bin/mailx', '-S', "smtp=smtp://#{smtp_host}:#{smtp_port}", '-S', "from=#{from}", '-S', "smtp-auth=#{smtp_auth_mechanism}", '-S', "smtp-auth-user=#{smtp_username}", '-S', "smtp-auth-password=#{smtp_password}", '-s', subject, to, :stdin_data=>body)
   if rc == 0
     puts "#{Time.now} Mail sent to #{to}."
   else
@@ -18,11 +18,11 @@ end
 def ping_healthcheck(url)
   rc = 0
   unless url.empty?
-    rc = system("wget #{url} -T 15 -t 10 -O /dev/null -q")
+    stdout, rc = Open3.capture2('/usr/bin/wget', url, '-T', '15', '-t', '10', '-O', '/dev/null', '-q')
     if rc == 0
       puts "#{Time.now} Success ping sent to #{url}"
     else
-      puts "#{Time.now} Failed to send success ping to #{url}"
+      puts "#{Time.now} Failed to send success ping to #{url} with rc: #{rc}"
     end
   end
   rc
