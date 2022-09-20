@@ -8,7 +8,7 @@ services:
       TIMEZONE: 'America/New_York'
       CEILING_THRESHOLD: '0.2'
       FLOOR_THRESHOLD: '3.0'
-      LAKE_NAME: "High Rock"
+      LAKE_NAME: "redacted"
       LAKE_URL: "http://redacted.uslakes.info"
       PING_URL: 'https://healthchecks.io/some/url'
       MAIL_SMTP_FROM: 'some_email@email.com'
