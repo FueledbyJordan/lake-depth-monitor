@@ -7,6 +7,11 @@ require 'open3'
 
 def send_email(to, from, subject, body, smtp_host, smtp_port, smtp_security, smtp_username, smtp_password, smtp_auth_mechanism)
   stdout, rc = Open3.capture2("mailx -S smtp=smtp://#{smtp_host}:#{smtp_port} -S from=#{from} -S smtp-auth=#{smtp_auth_mechanism} -S smtp-auth-user=#{smtp_username} -S smtp-auth-password=#{smtp_password} -s \"#{subject}\" #{to}", :stdin_data=>body)
+  if rc == 0
+    puts "#{Time.now} Mail sent to #{to}."
+  else
+    puts "#{Time.now} Failed to send mail to #{to}"
+  end
   rc
 end
 
@@ -14,7 +19,11 @@ def ping_healthcheck(url)
   rc = 0
   unless url.empty?
     rc = system("wget #{url} -T 15 -t 10 -O /dev/null -q")
-    puts "#{Time.now} Sending success ping to #{url}"
+    if rc == 0
+      puts "#{Time.now} Success ping sent to #{url}"
+    else
+      puts "#{Time.now} Failed to send success ping to #{url}"
+    end
   end
   rc
 end

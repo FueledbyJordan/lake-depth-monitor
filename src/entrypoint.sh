@@ -34,9 +34,5 @@ init_env
 configure_timezone
 configure_cron
 
-echo ${CRON_CONFIG_FILE}
-cat ${CRON_CONFIG_FILE}
-/app/main.rb
-
 # foreground run crond
 supercronic -passthrough-logs -quiet "${CRON_CONFIG_FILE}"

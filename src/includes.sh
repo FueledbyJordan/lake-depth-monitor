@@ -23,30 +23,6 @@ function color() {
 }
 
 ########################################
-# Check file is exist.
-# Arguments:
-#     file
-########################################
-function check_file_exist() {
-    if [[ ! -f "$1" ]]; then
-        color red "cannot access $1: No such file"
-        exit 1
-    fi
-}
-
-########################################
-# Check directory is exist.
-# Arguments:
-#     directory
-########################################
-function check_dir_exist() {
-    if [[ ! -d "$1" ]]; then
-        color red "cannot access $1: No such directory"
-        exit 1
-    fi
-}
-
-########################################
 # Send mail by mailx.
 # Arguments:
 #     mail subject
@@ -64,46 +40,6 @@ function send_mail() {
         color red "mail sending failed"
     else
         color blue "mail send was successfully"
-    fi
-}
-
-########################################
-# Send mail.
-# Arguments:
-#     backup successful
-#     mail content
-########################################
-function send_mail_content() {
-    if [[ "${MAIL_SMTP_ENABLE}" == "FALSE" ]]; then
-        return
-    fi
-
-    # successful
-    if [[ "$1" == "TRUE" && "${MAIL_WHEN_SUCCESS}" == "TRUE" ]]; then
-        send_mail "vaultwarden Backup Success" "$2"
-    fi
-
-    # failed
-    if [[ "$1" == "FALSE" && "${MAIL_WHEN_FAILURE}" == "TRUE" ]]; then
-        send_mail "vaultwarden Backup Failed" "$2"
-    fi
-}
-
-########################################
-# Send health check ping.
-# Arguments:
-#     None
-########################################
-function send_ping() {
-    if [[ -z "${PING_URL}" ]]; then
-        return
-    fi
-
-    wget "${PING_URL}" -T 15 -t 10 -O /dev/null -q
-    if [[ $? != 0 ]]; then
-        color red "ping sending failed"
-    else
-        color blue "ping send was successfully"
     fi
 }
 
@@ -171,7 +107,7 @@ function init_env() {
 
     # CRON
     get_env CRON
-    CRON="${CRON:-"*/1 * * * *"}"
+    CRON="${CRON:-"0 12 * * *"}"
 
     # PING_URL
     get_env PING_URL
