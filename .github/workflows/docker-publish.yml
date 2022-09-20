@@ -15,7 +15,9 @@ jobs:
       -
         name: Prepare
         id: pre
-        run: echo ::set-output name=tag::${GITHUB_REF#refs/tags/v}
+        run: |
+          DOCKER_IMAGE=fueledbyjordan/lake-depth-monitor
+          echo ::set-output name=tag::${GITHUB_REF#refs/tags/v}
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
