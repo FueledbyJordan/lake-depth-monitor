@@ -23,5 +23,9 @@ It is recommended to use docker.compose to manage the container lifecycle.  An e
 
 * [Supercronic](https://github.com/aptible/supercronic)
 
+## Contact
+
+Want to get a hold of me?  I can be reached at [djm@murrayfoundry.com](mailto:djm@murrayfoundry.com).
+
 ## License
 [MIT](https://choosealicense.com/licenses/mit/)
