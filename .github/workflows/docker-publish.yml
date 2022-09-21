@@ -15,9 +15,7 @@ jobs:
       -
         name: Prepare
         id: pre
-        run: |
-          DOCKER_IMAGE=fueledbyjordan/lake-depth-monitor
-          echo ::set-output name=tag::${GITHUB_REF#refs/tags/v}
+        run: echo ::set-output name=tag::${GITHUB_REF#refs/tags/v}
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v2
@@ -39,7 +37,7 @@ jobs:
           platforms: 'linux/amd64,linux/arm64,linux/arm/v6,linux/arm/v7'
           push: true
           tags: |
-            ttionya/vaultwarden-backup:latest
-            ttionya/vaultwarden-backup:${{ steps.pre.outputs.tag }}
-            ttionya/bitwardenrs-backup:latest
-            ttionya/bitwardenrs-backup:${{ steps.pre.outputs.tag }}
+            fueledbyjordan/lake-depth-monitor:latest
+            fueledbyjordan/lake-depth-monitor:${{ steps.pre.outputs.tag }}
+            fueledbyjordan/lake-depth-monitor:latest
+            fueledbyjordan/lake-depth-monitor:${{ steps.pre.outputs.tag }}
