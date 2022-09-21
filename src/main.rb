@@ -1,5 +1,6 @@
 #!/usr/local/bin/ruby
 
+require 'date'
 require 'json'
 require 'net/http'
 require 'uri'
@@ -33,36 +34,33 @@ def exit_with_message(message, rc)
   exit rc
 end
 
-def get_pool_stats(url, route)
-  uri = URI("#{url}/#{route}/")
+def get_current_pool(url)
+  uri = URI(url)
+  res = Net::HTTP.get_response(uri)
+  exit(1) unless res.is_a?(Net::HTTPSuccess)
+
+  todays_pool_feet = JSON.parse(res.body)['charts']
+                         .select { |item| item["date"].to_s == Date.today.to_s }
+                         .last[Date.today.year.to_s]
+                         .to_f
+end
+
+def get_full_pool(url)
+  uri = URI(url)
   res = Net::HTTP.get_response(uri)
   exit_with_message("#{url} => #{res.code}.", 1) unless res.is_a?(Net::HTTPSuccess)
-
-  num_match_regex = %r{Level is (?<delta>[0-9.]+) (feet|inches)}
-  num_match = res.body.match(num_match_regex)
-  exit_with_message("#{url} seems malformed.", 1) unless num_match
-  pool_delta_num = num_match[:delta].to_f
-
-  delta_regex = %r{(?<pool_delta>(below|above|from)) full pool of [0-9.]+}
-  delta_match = res.body.match(delta_regex)
-  exit_with_message("#{url} seems malformed.", 1) unless delta_match
-  pool_delta = delta_match[:pool_delta]
-
-  pool_delta_num = pool_delta_num * -1 if pool_delta.downcase == 'below'
 
   full_match_regex = %r{pool of (?<full_pool>[0-9.]+)}
   full_pool_match = res.body.match(full_match_regex)
   exit_with_message("#{url} seems malformed.", 1) unless full_pool_match
   full_pool = full_pool_match[:full_pool].to_f
-
-  pool_num = pool_delta_num + full_pool
-
-  return pool_num, full_pool
 end
 
 if __FILE__ == $PROGRAM_NAME
   @LAKE_NAME = ENV['LAKE_NAME']
   @LAKE_URL = ENV['LAKE_URL']
+  @CURRENT_POOL_URL = ENV['CURRENT_POOL_URL']
+  @FULL_POOL_URL = ENV['FULL_POOL_URL']
 
   @FLOOR_THRESHOLD = ENV['FLOOR_THRESHOLD']
   @CEILING_THRESHOLD = ENV['CEILING_THRESHOLD']
@@ -78,7 +76,8 @@ if __FILE__ == $PROGRAM_NAME
   @MAIL_SMTP_PASSWORD = ENV['MAIL_SMTP_PASSWORD']
   @MAIL_SMTP_AUTH_MECHANISM = ENV['MAIL_SMTP_AUTH_MECHANISM']
 
-  exit_with_message('LAKE_URL not set.', 1) if @LAKE_URL.empty?
+  exit_with_message('CURRENT_POOL_URL not set.', 1) if @CURRENT_POOL_URL.empty?
+  exit_with_message('FULL_POOL_URL not set.', 1) if @FULL_POOL_URL.empty?
   exit_with_message('MAIL_TO not set.', 1) if @MAIL_TO.empty?
   exit_with_message('MAIL_SMTP_HOST not set.', 1) if @MAIL_SMTP_HOST.empty?
   exit_with_message('MAIL_SMTP_FROM not set.', 1) if @MAIL_SMTP_FROM.empty?
@@ -87,23 +86,25 @@ if __FILE__ == $PROGRAM_NAME
   exit_with_message('MAIL_SMTP_USERNAME not set.', 1) if @MAIL_SMTP_USERNAME.empty?
   exit_with_message('MAIL_SMTP_PASSWORD not set.', 1) if @MAIL_SMTP_PASSWORD.empty?
   exit_with_message('MAIL_SMTP_AUTH_MECHANISM not set.', 1) if @MAIL_SMTP_AUTH_MECHANISM.empty?
+  exit_with_message('FLOOR_THRESHOLD not set.', 1) if @FLOOR_THRESHOLD.empty?
+  exit_with_message('CEILING_THRESHOLD not set.', 1) if @CEILING_THRESHOLD.empty?
 
-  @FLOOR_THRESHOLD = @FLOOR_THRESHOLD.empty? ? 3.0 : @FLOOR_THRESHOLD.to_f
-  @CEILING_THRESHOLD = @CEILING_THRESHOLD.empty? ? 0.2 : @CEILING_THRESHOLD.to_f
+  @FLOOR_THRESHOLD = @FLOOR_THRESHOLD.to_f
+  @CEILING_THRESHOLD = @CEILING_THRESHOLD.to_f
 
-  pool_elevation, full_pool_feet = get_pool_stats(@LAKE_URL, '/Level/')
+  current_pool = get_current_pool(@CURRENT_POOL_URL)
+  full_pool_feet = get_full_pool(@FULL_POOL_URL)
+  floor_threshold = full_pool_feet - @FLOOR_THRESHOLD.to_f
+  ceiling_threshold = full_pool_feet + @CEILING_THRESHOLD.to_f
 
-  floor_feet = full_pool_feet - @FLOOR_THRESHOLD
-  ceiling_feet = full_pool_feet + @CEILING_THRESHOLD
-
-  if pool_elevation < floor_feet
+  if current_pool < floor_threshold
     subject = "#{@LAKE_NAME} is at drought level"
-    body = "Pool is #{pool_elevation} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
+    body = "Pool is #{current_pool} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
     rc = send_email(@MAIL_TO, @MAIL_SMTP_FROM, subject, body, @MAIL_SMTP_HOST, @MAIL_SMTP_PORT, @MAIL_SMTP_SECURITY, @MAIL_SMTP_USERNAME, @MAIL_SMTP_PASSWORD, @MAIL_SMTP_AUTH_MECHANISM)
     exit_with_message('Email send failed.', 1) if rc != 0
-  elsif pool_elevation > ceiling_feet
+  elsif current_pool > ceiling_threshold
     subject = "#{@LAKE_NAME} is at flood level"
-    body = "Pool is #{pool_elevation} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
+    body = "Pool is #{current_pool} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
     rc = send_email(@MAIL_TO, @MAIL_SMTP_FROM, subject, body, @MAIL_SMTP_HOST, @MAIL_SMTP_PORT, @MAIL_SMTP_SECURITY, @MAIL_SMTP_USERNAME, @MAIL_SMTP_PASSWORD, @MAIL_SMTP_AUTH_MECHANISM)
     exit_with_message('Email send failed.', 1) if rc != 0
   end

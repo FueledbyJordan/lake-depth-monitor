@@ -9,7 +9,8 @@ services:
       CEILING_THRESHOLD: '0.2'
       FLOOR_THRESHOLD: '3.0'
       LAKE_NAME: "redacted"
-      LAKE_URL: "http://redacted.uslakes.info"
+      FULL_POOL_URL: "redacted"
+      CURRENT_POOL_URL: "redacted"
       PING_URL: 'https://healthchecks.io/some/url'
       MAIL_SMTP_FROM: 'some_email@email.com'
       MAIL_TO: 'some_email@email.com'
