@@ -21,7 +21,7 @@ def ping_healthcheck(url)
   unless url.empty?
     stdout, rc = Open3.capture2('/usr/bin/wget', url, '-T', '15', '-t', '10', '-O', '/dev/null', '-q')
     if rc == 0
-      puts "#{Time.now} Success ping sent to #{url}"
+      puts "#{Time.now} Success ping sent."
     else
       puts "#{Time.now} Failed to send success ping to #{url} with rc: #{rc}"
     end
@@ -40,8 +40,7 @@ def get_current_pool(url)
   exit(1) unless res.is_a?(Net::HTTPSuccess)
 
   todays_pool_feet = JSON.parse(res.body)['charts']
-                         .select { |item| item["date"].to_s == Date.today.to_s }
-                         .last[Date.today.year.to_s]
+                         .find { |item| item['date'].to_s == Date.today.to_s }[Date.today.year.to_s]
                          .to_f
 end
 
@@ -96,6 +95,8 @@ if __FILE__ == $PROGRAM_NAME
   full_pool_feet = get_full_pool(@FULL_POOL_URL)
   floor_threshold = full_pool_feet - @FLOOR_THRESHOLD.to_f
   ceiling_threshold = full_pool_feet + @CEILING_THRESHOLD.to_f
+
+  puts "#{Time.now} Current pool is #{current_pool}"
 
   if current_pool < floor_threshold
     subject = "#{@LAKE_NAME} is at drought level"

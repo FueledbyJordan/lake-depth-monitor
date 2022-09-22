@@ -70,25 +70,18 @@ function init_env() {
     if [[ -n "${PING_URL}" ]]; then
         color yellow "PING_URL: ${PING_URL}"
     fi
-    if [[ "${MAIL_SMTP_ENABLE}" == "TRUE" ]]; then
-        color yellow "MAIL_TO: ${MAIL_TO}"
-    fi
+    color yellow "MAIL_FROM: ${MAIL_FROM}"
+    color yellow "MAIL_TO: ${MAIL_TO}"
     color yellow "========================================"
 }
 
 function init_env_mail() {
-    # MAIL_SMTP_ENABLE
-    # MAIL_TO
-    get_env MAIL_SMTP_ENABLE
+    get_env MAIL_SMTP_FROM
     get_env MAIL_TO
-    MAIL_SMTP_ENABLE=$(echo "${MAIL_SMTP_ENABLE}" | tr '[a-z]' '[A-Z]')
-    if [[ "${MAIL_SMTP_ENABLE}" == "TRUE" && "${MAIL_TO}" ]]; then
-        MAIL_SMTP_ENABLE="TRUE"
-    else
-        MAIL_SMTP_ENABLE="FALSE"
-    fi
-
-    # MAIL_SMTP_VARIABLES
-    get_env MAIL_SMTP_VARIABLES
-    MAIL_SMTP_VARIABLES="${MAIL_SMTP_VARIABLES:-""}"
+    get_env MAIL_SMTP_HOST
+    get_env MAIL_SMTP_PORT
+    get_env MAIL_SMTP_SECURITY
+    get_env MAIL_SMTP_AUTH_MECHANISM
+    get_env MAIL_SMTP_USERNAME
+    get_env MAIL_SMTP_PASSWORD
 }

@@ -5,7 +5,7 @@
 function configure_cron() {
     local FIND_CRON_COUNT="$(grep -c 'main.rb' "${CRON_CONFIG_FILE}" 2> /dev/null)"
     if [[ "${FIND_CRON_COUNT}" -eq 0 ]]; then
-        echo "${CRON} /app/main.rb" >> "${CRON_CONFIG_FILE}"
+        echo "${CRON} /app/ldm.rb" >> "${CRON_CONFIG_FILE}"
     fi
 }
 
