@@ -70,7 +70,7 @@ function init_env() {
     if [[ -n "${PING_URL}" ]]; then
         color yellow "PING_URL: ${PING_URL}"
     fi
-    color yellow "MAIL_FROM: ${MAIL_FROM}"
+    color yellow "MAIL_FROM: ${MAIL_SMTP_FROM}"
     color yellow "MAIL_TO: ${MAIL_TO}"
     color yellow "========================================"
 }
