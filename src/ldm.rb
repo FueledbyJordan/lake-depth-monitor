@@ -1,115 +1,110 @@
-#!/usr/local/bin/ruby
+#!/usr/bin/env ruby
 
 require 'date'
 require 'json'
+require 'logger'
 require 'net/http'
 require 'uri'
-require 'open3'
 
-def send_email(to, from, subject, body, smtp_host, smtp_port, smtp_security, smtp_username, smtp_password, smtp_auth_mechanism)
-  stdout, rc = Open3.capture2('/usr/bin/mailx', '-S', "smtp=smtp://#{smtp_host}:#{smtp_port}", '-S', "from=#{from}", '-S', "smtp-auth=#{smtp_auth_mechanism}", '-S', "smtp-auth-user=#{smtp_username}", '-S', "smtp-auth-password=#{smtp_password}", '-s', subject, to, :stdin_data=>body)
-  if rc == 0
-    puts "#{Time.now} Mail sent to #{to}."
-  else
-    puts "#{Time.now} Failed to send mail to #{to}"
-  end
-  rc
+require 'sendgrid-ruby'
+
+def send_email(to, from, subject, body, sendgrid_api_key)
+  from = SendGrid::Email.new(email: from)
+  to = SendGrid::Email.new(email: to)
+  content = SendGrid::Content.new(type: 'text/plain', value: body)
+  mail = SendGrid::Mail.new(from, subject, to, content)
+  sg = SendGrid::API.new(api_key: sendgrid_api_key)
+
+  response = sg.client.mail._('send').post(request_body: mail.to_json)
+  raise 'failed to send email' unless response.status_code.match?(/^2[0-9]{2}$/)
+
+  pp "sent email to #{to}"
 end
 
 def ping_healthcheck(url)
-  rc = 0
-  unless url.empty?
-    stdout, rc = Open3.capture2('/usr/bin/wget', url, '-T', '15', '-t', '10', '-O', '/dev/null', '-q')
-    if rc == 0
-      puts "#{Time.now} Success ping sent."
-    else
-      puts "#{Time.now} Failed to send success ping to #{url} with rc: #{rc}"
-    end
-  end
-  rc
-end
+  raise 'ping url cannot be empty' if url.empty?
 
-def exit_with_message(message, rc)
-  puts message
-  exit rc
+  res = Net::HTTP.get_response(URI(url))
+  raise 'healthcheck ping failure' unless res.is_a?(Net::HTTPSuccess)
 end
 
 def get_current_pool(url)
-  uri = URI(url)
-  res = Net::HTTP.get_response(uri)
-  exit(1) unless res.is_a?(Net::HTTPSuccess)
+  res = Net::HTTP.get_response(URI(url))
+  raise 'failed to get current pool' unless res.is_a?(Net::HTTPSuccess)
 
-  todays_pool_feet = JSON.parse(res.body)['charts']
-                         .find { |item| item['date'].to_s == Date.today.to_s }[Date.today.year.to_s]
-                         .to_f
+  today = Date.today
+  JSON.parse(res.body)['charts']
+      .find { |item| item['date'].to_s == today.to_s }[today.year.to_s]
+      .to_f
 end
 
 def get_full_pool(url)
   uri = URI(url)
   res = Net::HTTP.get_response(uri)
-  exit_with_message("#{url} => #{res.code}.", 1) unless res.is_a?(Net::HTTPSuccess)
+  raise 'failed to get full pool' unless res.is_a?(Net::HTTPSuccess)
 
-  full_match_regex = %r{pool of (?<full_pool>[0-9.]+)}
+  full_match_regex = /pool of (?<full_pool>[0-9.]+)/
   full_pool_match = res.body.match(full_match_regex)
-  exit_with_message("#{url} seems malformed.", 1) unless full_pool_match
-  full_pool = full_pool_match[:full_pool].to_f
+  raise "#{url} seems malformed." unless full_pool_match
+
+  full_pool_match[:full_pool].to_f
 end
 
 if __FILE__ == $PROGRAM_NAME
-  @LAKE_NAME = ENV['LAKE_NAME']
-  @LAKE_URL = ENV['LAKE_URL']
-  @CURRENT_POOL_URL = ENV['CURRENT_POOL_URL']
-  @FULL_POOL_URL = ENV['FULL_POOL_URL']
+  begin
+    $stdout.sync = true
+    log = Logger.new($stdout)
 
-  @FLOOR_THRESHOLD = ENV['FLOOR_THRESHOLD']
-  @CEILING_THRESHOLD = ENV['CEILING_THRESHOLD']
+    begin_time = Time.now
+    log.info 'lake depth monitor invoked'
 
-  @PING_URL = ENV['PING_URL']
+    lake_name = ENV['LAKE_NAME']
+    current_pool_url = ENV['CURRENT_POOL_URL']
+    full_pool_url = ENV['FULL_POOL_URL']
+    floor_threshold = ENV['FLOOR_THRESHOLD']
+    ceiling_threshold = ENV['CEILING_THRESHOLD']
+    ping_url = ENV['PING_URL']
+    sendgrid_api_key = ENV['SENDGRID_API_KEY']
+    mail_to = ENV['MAIL_TO']
+    mail_from = ENV['MAIL_FROM']
 
-  @MAIL_TO = ENV['MAIL_TO']
-  @MAIL_SMTP_HOST = ENV['MAIL_SMTP_HOST']
-  @MAIL_SMTP_FROM = ENV['MAIL_SMTP_FROM']
-  @MAIL_SMTP_PORT = ENV['MAIL_SMTP_PORT']
-  @MAIL_SMTP_SECURITY = ENV['MAIL_SMTP_SECURITY']
-  @MAIL_SMTP_USERNAME = ENV['MAIL_SMTP_USERNAME']
-  @MAIL_SMTP_PASSWORD = ENV['MAIL_SMTP_PASSWORD']
-  @MAIL_SMTP_AUTH_MECHANISM = ENV['MAIL_SMTP_AUTH_MECHANISM']
+    raise 'current_pool_url not set.' if current_pool_url.empty?
+    raise 'full_pool_url not set.' if full_pool_url.empty?
+    raise 'mail_to not set.' if mail_to.empty?
+    raise 'mail_from not set.' if mail_from.empty?
+    raise 'sendgrid_api_key not set.' if sendgrid_api_key.empty?
+    raise 'floor_threshold not set.' if floor_threshold.empty?
+    raise 'ceiling_threshold not set.' if ceiling_threshold.empty?
 
-  exit_with_message('CURRENT_POOL_URL not set.', 1) if @CURRENT_POOL_URL.empty?
-  exit_with_message('FULL_POOL_URL not set.', 1) if @FULL_POOL_URL.empty?
-  exit_with_message('MAIL_TO not set.', 1) if @MAIL_TO.empty?
-  exit_with_message('MAIL_SMTP_HOST not set.', 1) if @MAIL_SMTP_HOST.empty?
-  exit_with_message('MAIL_SMTP_FROM not set.', 1) if @MAIL_SMTP_FROM.empty?
-  exit_with_message('MAIL_SMTP_PORT not set.', 1) if @MAIL_SMTP_PORT.empty?
-  exit_with_message('MAIL_SMTP_SECURITY not set.', 1) if @MAIL_SMTP_SECURITY.empty?
-  exit_with_message('MAIL_SMTP_USERNAME not set.', 1) if @MAIL_SMTP_USERNAME.empty?
-  exit_with_message('MAIL_SMTP_PASSWORD not set.', 1) if @MAIL_SMTP_PASSWORD.empty?
-  exit_with_message('MAIL_SMTP_AUTH_MECHANISM not set.', 1) if @MAIL_SMTP_AUTH_MECHANISM.empty?
-  exit_with_message('FLOOR_THRESHOLD not set.', 1) if @FLOOR_THRESHOLD.empty?
-  exit_with_message('CEILING_THRESHOLD not set.', 1) if @CEILING_THRESHOLD.empty?
+    @floor_threshold = floor_threshold.to_f
+    @ceiling_threshold = ceiling_threshold.to_f
 
-  @FLOOR_THRESHOLD = @FLOOR_THRESHOLD.to_f
-  @CEILING_THRESHOLD = @CEILING_THRESHOLD.to_f
+    current_pool = get_current_pool(current_pool_url)
+    full_pool_feet = get_full_pool(full_pool_url)
+    floor_threshold = full_pool_feet - floor_threshold.to_f
+    ceiling_threshold = full_pool_feet + ceiling_threshold.to_f
 
-  current_pool = get_current_pool(@CURRENT_POOL_URL)
-  full_pool_feet = get_full_pool(@FULL_POOL_URL)
-  floor_threshold = full_pool_feet - @FLOOR_THRESHOLD.to_f
-  ceiling_threshold = full_pool_feet + @CEILING_THRESHOLD.to_f
+    log.info "current pool is #{current_pool}"
 
-  puts "#{Time.now} Current pool is #{current_pool}"
+    if current_pool <= floor_threshold
+      subject = "#{lake_name} is at drought level"
+      body = "Pool is #{current_pool} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
+    elsif current_pool >= ceiling_threshold
+      subject = "#{lake_name} is at flood level"
+      body = "Pool is #{current_pool} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
+    end
 
-  if current_pool < floor_threshold
-    subject = "#{@LAKE_NAME} is at drought level"
-    body = "Pool is #{current_pool} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
-    rc = send_email(@MAIL_TO, @MAIL_SMTP_FROM, subject, body, @MAIL_SMTP_HOST, @MAIL_SMTP_PORT, @MAIL_SMTP_SECURITY, @MAIL_SMTP_USERNAME, @MAIL_SMTP_PASSWORD, @MAIL_SMTP_AUTH_MECHANISM)
-    exit_with_message('Email send failed.', 1) if rc != 0
-  elsif current_pool > ceiling_threshold
-    subject = "#{@LAKE_NAME} is at flood level"
-    body = "Pool is #{current_pool} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
-    rc = send_email(@MAIL_TO, @MAIL_SMTP_FROM, subject, body, @MAIL_SMTP_HOST, @MAIL_SMTP_PORT, @MAIL_SMTP_SECURITY, @MAIL_SMTP_USERNAME, @MAIL_SMTP_PASSWORD, @MAIL_SMTP_AUTH_MECHANISM)
-    exit_with_message('Email send failed.', 1) if rc != 0
+    send_email(mail_to, mail_from, subject, body, sendgrid_api_key) if !subject.nil? && !body.nil?
+    ping_healthcheck(ping_url)
+  rescue StandardError => e
+    log.error e.message
+    exit_status = 1
+  else
+    exit_status = 0
   end
 
-  ping_healthcheck(@PING_URL)
-  exit 0
+  end_time = Time.now
+  run_duration = end_time.to_i - begin_time.to_i
+  log.info "lake depth monitor complete. took #{run_duration}s"
+  exit exit_status
 end

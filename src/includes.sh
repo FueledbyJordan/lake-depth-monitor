@@ -70,18 +70,13 @@ function init_env() {
     if [[ -n "${PING_URL}" ]]; then
         color yellow "PING_URL: ${PING_URL}"
     fi
-    color yellow "MAIL_FROM: ${MAIL_SMTP_FROM}"
+    color yellow "MAIL_FROM: ${MAIL_FROM}"
     color yellow "MAIL_TO: ${MAIL_TO}"
     color yellow "========================================"
 }
 
 function init_env_mail() {
-    get_env MAIL_SMTP_FROM
+    get_env MAIL_FROM
     get_env MAIL_TO
-    get_env MAIL_SMTP_HOST
-    get_env MAIL_SMTP_PORT
-    get_env MAIL_SMTP_SECURITY
-    get_env MAIL_SMTP_AUTH_MECHANISM
-    get_env MAIL_SMTP_USERNAME
-    get_env MAIL_SMTP_PASSWORD
+    get_env SENDGRID_API_KEY
 }
