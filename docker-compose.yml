@@ -4,19 +4,14 @@ services:
   waterbot:
     build: .
     environment:
-      CRON: '0 9 * * *'
-      TIMEZONE: 'America/New_York'
-      CEILING_THRESHOLD: '0.2'
-      FLOOR_THRESHOLD: '3.0'
-      LAKE_NAME: "redacted"
-      FULL_POOL_URL: "redacted"
-      CURRENT_POOL_URL: "redacted"
-      PING_URL: 'https://healthchecks.io/some/url'
-      MAIL_SMTP_FROM: 'some_email@email.com'
-      MAIL_TO: 'some_email@email.com'
-      MAIL_SMTP_HOST: 'smtp.sendgrid.net'
-      MAIL_SMTP_PORT: '587'
-      MAIL_SMTP_SECURITY: 'starttls'
-      MAIL_SMTP_AUTH_MECHANISM: 'login'
-      MAIL_SMTP_USERNAME: 'apikey'
-      MAIL_SMTP_PASSWORD: 'your_api_key'
+      CRON: '0 0 9 * * * *'
+      TIMEZONE: America/New_York
+      CEILING_THRESHOLD: 0.2
+      FLOOR_THRESHOLD: 3.0
+      LAKE_NAME: 'redacted'
+      FULL_POOL_URL: 'redacted'
+      CURRENT_POOL_URL: 'redacted'
+      PING_URL: 'redacted'
+      MAIL_FROM: 'redacted'
+      MAIL_TO: 'redacted'
+      SENDGRID_API_KEY: 'redacted'
