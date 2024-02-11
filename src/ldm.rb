@@ -17,8 +17,6 @@ def send_email(to, from, subject, body, sendgrid_api_key)
 
   response = sg.client.mail._('send').post(request_body: mail.to_json)
   raise 'failed to send email' unless response.status_code.match?(/^2[0-9]{2}$/)
-
-  pp "sent email to #{to}"
 end
 
 def ping_healthcheck(url)
@@ -94,7 +92,11 @@ if __FILE__ == $PROGRAM_NAME
       body = "Pool is #{current_pool} / #{full_pool_feet}.\n\nSincerely,\n\nThe Water Bot."
     end
 
-    send_email(mail_to, mail_from, subject, body, sendgrid_api_key) if !subject.nil? && !body.nil?
+    if !subject.nil? && !body.nil?
+      send_email(mail_to, mail_from, subject, body, sendgrid_api_key)
+      log.info "sent email to #{mail_to}"
+    end
+
     ping_healthcheck(ping_url)
   rescue StandardError => e
     log.error e.message
